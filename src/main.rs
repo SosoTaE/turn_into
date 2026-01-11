@@ -9,11 +9,13 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 {
-        eprintln!("Usage: {} <source_img> <style_img> <output_path>", args[0]);
+        eprintln!("Usage: {} <source_img> <style_img> <output_path> <k_size:by default 8>", args[0]);
         process::exit(1);
     }
 
-    let k = 8; // Number of clusters
+    let k: usize = args.get(4)
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(8);
 
     println!("Step 1: Extracting Frequency-Sorted Palette from Source...");
     let (img_a, palette_a) = get_image_and_sorted_palette(&args[1], k);
