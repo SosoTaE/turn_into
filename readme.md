@@ -1,77 +1,88 @@
 # **turn\_into 🎨**
 
-**A High-Performance Color Transfer & Quantization Engine**
+**High-Performance Frequency-Based Color Style Transfer**
 
-turn\_into is a Rust-based CLI tool designed to map the aesthetic "soul" of one image onto another. By using **K-Means clustering** in the **CIE $L^\*a^\*b^\*$ color space**, it extracts dominant palettes and performs high-fidelity color replacement using parallel processing.
-
-## **🚀 Key Features**
-
-* **K-Means Color Quantization**: Accurately extracts the $K$ most dominant colors from any image.  
-* **Perceptual Accuracy**: Operates in **LAB color space** to ensure color mapping matches human visual perception rather than raw RGB math.  
-* **High Performance**: Leverages **Rayon** for data-parallelism, utilizing all CPU cores for pixel transformation.  
-* **Memory Efficient**: Optimized sampling via thumbnailing for palette extraction.
+turn\_into is a Rust-based CLI tool that maps the aesthetic "soul" of one image onto another. Unlike standard color quantizers that map by visual similarity, this engine uses **statistical frequency mapping** in the **CIE $L^\*a^\*b^\*$** color space to ensure even contrasting styles are transferred effectively.
 
 ## ---
 
-**🛠 Installation**
+**🖼 Examples**
 
-Since this is a Rust project, ensure you have cargo installed (on Arch: sudo pacman \-S rust).
+### **Source Image (A)**
+![Color Transfer Demo](./images/A.jpg)
+
+### **Style Image (B)**
+![Color Transfer Demo](./images/B.jpg)
+
+### **Result**
+![Color Transfer Demo](./images/result.png)
+
+## ---
+
+**🚀 Key Features**
+
+* **Frequency-Based Mapping**: Maps colors based on their prevalence (importance) rather than just proximity, allowing for dramatic stylistic shifts.  
+* **Perceptual Accuracy**: Operates in the **LAB color space** to ensure quantization matches human visual perception.  
+* **Massive Parallelism**: Leverages **Rayon** to utilize every logical core of your CPU (optimized for modern chips like the i7-12700F).  
+* **Optimized Analysis**: Uses thumbnail-based sampling to perform K-Means clustering in milliseconds.
+
+## ---
+
+**🛠 Installation & Usage**
+
+### **Prerequisites**
+
+Ensure you have the Rust toolchain installed. On Arch Linux:
 
 Bash
 
-git clone https://github.com/SosoTaE/turn\_into.git  
-cd turn\_into  
+sudo pacman \-S rust
+
+### **Build**
+
+For image processing, **always** build with the \--release flag to enable compiler optimizations:
+
+Bash
+
 cargo build \--release
 
-The optimized binary will be located at target/release/turn\_into.
+### **Run**
 
-## ---
-
-**📖 Usage**
-
-Run the tool by providing the source image (the one to change), the target image (the color source), and the output path.
+The tool takes three arguments: the source image, the style reference, and the output path.
 
 Bash
 
-./target/release/turn\_into \<image\_a\> \<image\_b\> \<output\_path\>
-
-### **Example:**
-
-Bash
-
-\# Map the colors of 'sunset.jpg' onto 'cityscape.png'  
-./target/release/turn\_into cityscape.png sunset.jpg result.png
+./target/release/turn\_into ./images/A.jpg ./images/B.jpg ./images/result.png
 
 ## ---
 
 **🧠 How it Works**
 
-1. **Thumbnail Sampling**: To avoid processing millions of pixels for a simple palette, the engine generates a 128x128 thumbnail of both images.  
-2. **K-Means Clustering**: The tool runs the K-Means algorithm (using the kmeans\_colors crate) to find the "centroids" of the color clusters in LAB space.  
-3. **Euclidean Mapping**: For every pixel in Image A, the engine calculates the squared Euclidean distance to find the closest color in Palette A, then swaps it with the corresponding index in Palette B.  
-4. **Parallel Reconstruction**: The final image is reconstructed pixel-by-pixel across multiple threads.
+1. **Palette Extraction**: The engine extracts $K$ clusters from both images using K-Means.  
+2. **Statistical Sorting**: Both palettes are sorted by "weight" (pixel count).  
+3. **Index Mapping**: The most common color in Image A is replaced by the most common color in Image B. This is why a purple sky (common in A) can successfully turn into a green background (common in B).  
+4. **Parallel Reconstruction**: The final pixel buffer is computed in parallel across your CPU's thread pool.
 
 ## ---
 
-**📈 Optimization Details**
+**📈 Performance Optimizations**
 
-* **Delta-E Squared**: We use squared distance calculations to avoid expensive square root operations during pixel comparison.  
-* **Static Linking**: Compiles to a single, dependency-free binary for easy deployment on Linux/Arch systems.
+* **Delta-E Squared**: We use squared Euclidean distance in the hot loop to avoid expensive sqrt() operations.  
+* **Thread Bridging**: Uses par\_bridge() to efficiently distribute image rows across multiple CPU threads.  
+* **Low Memory Footprint**: Analyzes small thumbnails for palette generation while processing the full-resolution buffer for the final output.
 
 ## ---
 
 **🤝 Contributing**
 
-Feel free to fork this repo and submit PRs. I'm specifically looking for:
+I am a Computer Science student and backend developer. I'm currently exploring:
 
-* Support for different $K$ values per image.  
-* Sorting palettes by frequency/prevalence for more accurate stylistic matching.  
-* WebAssembly (WASM) support for browser-based mapping.
+* Implementing a GPU compute path via wgpu.  
+* Adding an automatic "Elbow Method" to calculate the optimal $K$ value dynamically.  
+* WASM support for browser-based processing.
 
 ### ---
 
 **Author**
 
-**Soso (SosoTaE)** Backend Developer | Computer Science Student
-
-*Batumi, Georgia*
+**Soso (SosoTaE)** *Batumi, Georgia* Backend Developer | CS Student
