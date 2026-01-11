@@ -1,5 +1,5 @@
 use image::{Rgba, RgbaImage};
-use kmeans_colors::{get_kmeans, Calculate};
+use kmeans_colors::{get_kmeans};
 use palette::{FromColor, Lab, Srgb};
 use rayon::prelude::*;
 use std::env;
@@ -19,7 +19,7 @@ fn main() {
     let path_b = &args[2];
     let path_out = &args[3];
 
-    let k = 8;
+    let k = 16;
 
     // 2. Load and Extract Palettes
     println!("Extracting palette from Image A: {}...", path_a);
