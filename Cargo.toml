@@ -1,0 +1,10 @@
+[package]
+name = "turn_into_v1"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+image = "0.25"        # For image decoding
+kmeans_colors = "0.6" # For color clustering
+palette = "0.7"
+rayon = "1.10" # For color space conversion (LAB is better for accuracy)
