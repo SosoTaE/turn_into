@@ -1,107 +1,97 @@
 use image::{Rgba, RgbaImage};
-use kmeans_colors::{get_kmeans, Kmeans, Calculate};
+use kmeans_colors::get_kmeans;
 use palette::{FromColor, Lab, Srgb};
 use rayon::prelude::*;
 use std::env;
+use std::io;
 use std::process;
+use dashmap::DashSet;
 
-fn main() {
+fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 {
-        eprintln!("Usage: {} <source_img> <style_img> <output_path> <k_size:by default 8>", args[0]);
+        eprintln!("Usage: {} <source> <style> <output> [max_k]", args[0]);
         process::exit(1);
     }
 
-    let k: usize = args.get(4)
-        .and_then(|v| v.parse::<usize>().ok())
-        .unwrap_or(8);
+    let src = &args[1];
+    let style = &args[2];
+    let out = &args[3];
+    let max_k: usize = args.get(4).and_then(|v| v.parse().ok()).unwrap_or(8);
 
-    println!("Step 1: Extracting Frequency-Sorted Palette from Source...");
-    let (img_a, palette_a) = get_image_and_sorted_palette(&args[1], k);
+    run_photo_mode(src, style, out, max_k);
 
-    println!("Step 2: Extracting Frequency-Sorted Palette from Style...");
-    let (_, palette_b) = get_image_and_sorted_palette(&args[2], k);
-
-    // Step 3: Frequency Mapping
-    // Instead of finding 'nearest' color, we map index-to-index.
-    // Most common color in A maps to most common color in B.
-    let color_map = palette_b;
-
-    println!("Step 4: Transforming image using frequency mapping...");
-    let result_img = transform_image_parallel(&img_a, &palette_a, &color_map);
-
-    result_img.save(&args[3]).expect("Failed to save result");
-    println!("Success! Result saved to {}", args[3]);
+    Ok(())
 }
 
-/// Loads an image, runs K-Means, and returns (Full Image, Palette sorted by prevalence)
-fn get_image_and_sorted_palette(path: &str, k: usize) -> (RgbaImage, Vec<Lab>) {
-    let img = image::open(path)
-        .unwrap_or_else(|_| {
-            eprintln!("Error: Could not find image at {}", path);
-            process::exit(1);
-        })
-        .to_rgba8();
+fn count_unique_colors(img: &RgbaImage) -> usize {
+    println!("🔍 Analyzing {} pixels for unique colors...", img.width() * img.height());
 
-    // Resize for analysis to speed up K-Means
+    let unique_colors = DashSet::new();
+
+    img.pixels().par_bridge().for_each(|pixel| {
+        unique_colors.insert(pixel.0);
+    });
+
+    unique_colors.len()
+}
+
+fn run_photo_mode(src: &str, style: &str, out: &str, k: usize) {
+    println!("Step 1: Analyzing Palettes...");
+    let (img_a, pal_a) = get_image_and_sorted_palette(src, k);
+    let color_count = count_unique_colors(&img_a);
+    println!("✓ Source image contains {} unique colors.", color_count);
+    
+    let (_, pal_b) = get_image_and_sorted_palette(style, k);
+
+    println!("Step 2: Processing Pixels in Parallel...");
+    let result = transform_image_parallel(&img_a, &pal_a, &pal_b);
+
+    result.save(out).expect("Failed to save result");
+    println!("✓ Photo saved to {}", out);
+}
+
+fn get_image_and_sorted_palette(path: &str, k: usize) -> (RgbaImage, Vec<Lab>) {
+    let img = image::open(path).expect("File error").to_rgba8();
     let thumb = image::imageops::thumbnail(&img, 128, 128);
     let labs: Vec<Lab> = thumb.pixels().map(|p| rgb_to_lab(*p)).collect();
 
-    // Run K-Means
     let result = get_kmeans(k, 20, 5.0, false, &labs, 0);
 
-    // Associate centroids with their weights (pixel counts)
-    let mut palette_with_counts: Vec<(Lab, usize)> = result.centroids
-        .iter()
-        .enumerate()
-        .map(|(i, &c)| {
-            // Count how many pixels were assigned to this specific centroid
-            let count = result.indices.iter().filter(|&&idx| idx == i as u8).count();
-            (c, count)
-        })
+    let mut pal: Vec<(Lab, usize)> = result.centroids.iter().enumerate()
+        .map(|(i, &c)| (c, result.indices.iter().filter(|&&idx| idx == i as u8).count()))
         .collect();
 
-    // Sort by count descending (most common colors first)
-    palette_with_counts.sort_by(|a, b| b.1.cmp(&a.1));
-
-    // Return just the colors in their new sorted order
-    let sorted_palette = palette_with_counts.into_iter().map(|(c, _)| c).collect();
-    (img, sorted_palette)
+    pal.sort_by(|a, b| b.1.cmp(&a.1));
+    (img, pal.into_iter().map(|(c, _)| c).collect())
 }
 
-/// Parallel pixel transformation using index-based mapping
-fn transform_image_parallel(img: &RgbaImage, source_palette: &[Lab], map: &[Lab]) -> RgbaImage {
+fn transform_image_parallel(img: &RgbaImage, src_pal: &[Lab], tgt_pal: &[Lab]) -> RgbaImage {
     let (width, height) = img.dimensions();
     let mut output = RgbaImage::new(width, height);
 
     output.enumerate_pixels_mut().par_bridge().for_each(|(x, y, out_pixel)| {
-        let original_pixel = img.get_pixel(x, y);
-        let lab_pixel = rgb_to_lab(*original_pixel);
-
-        // Find which palette index the current pixel belongs to
+        let lab_px = rgb_to_lab(*img.get_pixel(x, y));
         let mut best_idx = 0;
         let mut min_dist = f32::MAX;
-        for (i, source_color) in source_palette.iter().enumerate() {
-            let d = delta_e_sq(&lab_pixel, source_color);
-            if d < min_dist {
-                min_dist = d;
-                best_idx = i;
+
+        for (i, src_color) in src_pal.iter().enumerate() {
+            let d = delta_e_sq(&lab_px, src_color);
+            if d < min_dist { 
+                min_dist = d; 
+                best_idx = i; 
             }
         }
 
-        // Map the index directly to the target palette
-        let mapped_lab = map[best_idx];
-        let final_rgb = Srgb::from_color(mapped_lab);
-
+        let final_rgb = Srgb::from_color(tgt_pal[best_idx]);
         *out_pixel = Rgba([
-            (final_rgb.red * 255.0).round() as u8,
-            (final_rgb.green * 255.0).round() as u8,
-            (final_rgb.blue * 255.0).round() as u8,
-            original_pixel[3], // Keep original alpha
+            (final_rgb.red * 255.0) as u8,
+            (final_rgb.green * 255.0) as u8,
+            (final_rgb.blue * 255.0) as u8,
+            255
         ]);
     });
-
     output
 }
 

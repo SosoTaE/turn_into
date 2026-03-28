@@ -7,4 +7,5 @@ edition = "2024"
 image = "0.25"        # For image decoding
 kmeans_colors = "0.6" # For color clustering
 palette = "0.7"
-rayon = "1.10" # For color space conversion (LAB is better for accuracy)
+rayon = "1.10"
+dashmap = "7.0.0-rc2" # For color space conversion (LAB is better for accuracy)

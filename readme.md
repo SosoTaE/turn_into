@@ -85,20 +85,6 @@ Bash
 * **Thread Bridging**: Uses par\_bridge() to efficiently distribute image pixel mutation across multiple CPU threads.  
 * **Low Memory Footprint**: Analyzes 128x128 thumbnails for palette generation while processing the full-resolution buffer for the final output.
 
-## ---
 
-**🤝 Contributing**
 
-I am a Computer Science student and backend developer. This project is a part of my exploration into high-performance systems and AI-driven media manipulation. I am currently exploring:
 
-* Implementing a GPU compute path via wgpu for my **RTX 5070**.  
-* Moving from LAB to **Oklab** for even better hue consistency.  
-* Adding support for **Hald CLUT** extraction to save and reuse styles.
-
-### ---
-
-**Author**
-
-**Soso (SosoTaE)** *Batumi, Georgia*
-
-Backend Developer | CS Student
