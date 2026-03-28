@@ -11,7 +11,7 @@ turn\_into is a Rust-based CLI tool that maps the aesthetic "soul" of one image 
 
 ### **Source Image (A)**
 
-![Color Transfer Demo](./images/A.jpg)
+![Color Transfer Demo](./images/A.png)
 
 
 
@@ -24,6 +24,40 @@ turn\_into is a Rust-based CLI tool that maps the aesthetic "soul" of one image 
 ### **Result**
 
 ![Color Transfer Demo](./images/result.png)
+
+
+### **Source Image (C)**
+
+![Color Transfer Demo](./images/dark_image.jpeg)
+
+
+
+### **Style Image (D)**
+
+![Color Transfer Demo](./images/B.jpg)
+
+
+
+### **Result**
+
+![Color Transfer Demo](./images/dark_image_to_B.png)
+
+
+### **Source Image (E)**
+
+![Color Transfer Demo](./images/B.jpg)
+
+
+
+### **Style Image (F)**
+
+![Color Transfer Demo](./images/dark_image.jpeg)
+
+
+
+### **Result**
+
+![Color Transfer Demo](./images/B_to_dark_image.png)
 
 
 
